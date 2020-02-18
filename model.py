@@ -336,7 +336,7 @@ class Model:
         path_target_indices = input_tensors[reader.PATH_TARGET_INDICES_KEY]
         valid_context_mask = input_tensors[reader.VALID_CONTEXT_MASK_KEY]
         path_source_lengths = input_tensors[reader.PATH_SOURCE_LENGTHS_KEY]
-        path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
+        # path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
         path_target_lengths = input_tensors[reader.PATH_TARGET_LENGTHS_KEY]
 
         with tf.variable_scope('model'):
@@ -358,12 +358,18 @@ class Model:
                                                                                                      mode='FAN_OUT',
                                                                                                      uniform=True))
             # (batch, max_contexts, decoder_size)
+            # batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab, nodes_vocab=nodes_vocab,
+            #                                          source_input=path_source_indices, nodes_input=node_indices,
+            #                                          target_input=path_target_indices,
+            #                                          valid_mask=valid_context_mask,
+            #                                          path_source_lengths=path_source_lengths,
+            #                                          path_lengths=path_lengths, path_target_lengths=path_target_lengths)
             batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab, nodes_vocab=nodes_vocab,
                                                      source_input=path_source_indices, nodes_input=node_indices,
                                                      target_input=path_target_indices,
                                                      valid_mask=valid_context_mask,
                                                      path_source_lengths=path_source_lengths,
-                                                     path_lengths=path_lengths, path_target_lengths=path_target_lengths)
+                                                     path_target_lengths=path_target_lengths)
 
             batch_size = tf.shape(target_index)[0]
             outputs, final_states = self.decode_outputs(target_words_vocab=target_words_vocab,
@@ -463,10 +469,14 @@ class Model:
                                                                                           maximum_iterations=self.config.MAX_TARGET_PARTS + 1)
         return outputs, final_states
 
-    def calculate_path_abstraction(self, path_embed, path_lengths, valid_contexts_mask, is_evaluating=False):
-        return self.path_rnn_last_state(is_evaluating, path_embed, path_lengths, valid_contexts_mask)
+    # def calculate_path_abstraction(self, path_embed, path_lengths, valid_contexts_mask, is_evaluating=False):
+    #     return self.path_rnn_last_state(is_evaluating, path_embed, path_lengths, valid_contexts_mask)
+    def calculate_path_abstraction(self, path_embed, valid_contexts_mask, is_evaluating=False):
+        return self.path_rnn_last_state(is_evaluating, path_embed, valid_contexts_mask)
 
-    def path_rnn_last_state(self, is_evaluating, path_embed, path_lengths, valid_contexts_mask):
+
+    # def path_rnn_last_state(self, is_evaluating, path_embed, path_lengths, valid_contexts_mask):
+    def path_rnn_last_state(self, is_evaluating, path_embed, valid_contexts_mask):
         # path_embed:           (batch, max_contexts, max_path_length+1, dim)
         # path_length:          (batch, max_contexts)
         # valid_contexts_mask:  (batch, max_contexts)
@@ -506,12 +516,15 @@ class Model:
         return tf.reshape(final_rnn_state,
                           shape=[-1, max_contexts, self.config.RNN_SIZE])  # (batch, max_contexts, rnn_size)
 
+    # def compute_contexts(self, subtoken_vocab, nodes_vocab, source_input, nodes_input,
+    #                      target_input, valid_mask, path_source_lengths, path_lengths, path_target_lengths,
+    #                      is_evaluating=False):
     def compute_contexts(self, subtoken_vocab, nodes_vocab, source_input, nodes_input,
-                         target_input, valid_mask, path_source_lengths, path_lengths, path_target_lengths,
+                         target_input, valid_mask, path_source_lengths, path_target_lengths,
                          is_evaluating=False):
-
         source_word_embed = tf.nn.embedding_lookup(params=subtoken_vocab,
                                                    ids=source_input)  # (batch, max_contexts, max_name_parts, dim)
+        # todo: input float32
         path_embed = tf.nn.embedding_lookup(params=nodes_vocab,
                                             ids=nodes_input)  # (batch, max_contexts, max_path_length+1, dim)
         target_word_embed = tf.nn.embedding_lookup(params=subtoken_vocab,
@@ -526,8 +539,11 @@ class Model:
 
         source_words_sum = tf.reduce_sum(source_word_embed * source_word_mask,
                                          axis=2)  # (batch, max_contexts, dim)
-        path_nodes_aggregation = self.calculate_path_abstraction(path_embed, path_lengths, valid_mask,
+        # path_nodes_aggregation = self.calculate_path_abstraction(path_embed, path_lengths, valid_mask,
+        #                                                          is_evaluating)  # (batch, max_contexts, rnn_size)
+        path_nodes_aggregation = self.calculate_path_abstraction(path_embed, valid_mask,
                                                                  is_evaluating)  # (batch, max_contexts, rnn_size)
+
         target_words_sum = tf.reduce_sum(target_word_embed * target_word_mask, axis=2)  # (batch, max_contexts, dim)
 
         context_embed = tf.concat([source_words_sum, path_nodes_aggregation, target_words_sum],
@@ -547,7 +563,7 @@ class Model:
         path_target_indices = input_tensors[reader.PATH_TARGET_INDICES_KEY]
         valid_mask = input_tensors[reader.VALID_CONTEXT_MASK_KEY]
         path_source_lengths = input_tensors[reader.PATH_SOURCE_LENGTHS_KEY]
-        path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
+        # path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
         path_target_lengths = input_tensors[reader.PATH_TARGET_LENGTHS_KEY]
 
         with tf.variable_scope('model', reuse=self.get_should_reuse_variables()):
@@ -561,12 +577,19 @@ class Model:
                                           shape=(self.nodes_vocab_size, self.config.EMBEDDINGS_SIZE),
                                           dtype=tf.float32, trainable=False)
 
+            # batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab, nodes_vocab=nodes_vocab,
+            #                                          source_input=path_source_indices, nodes_input=node_indices,
+            #                                          target_input=path_target_indices,
+            #                                          valid_mask=valid_mask,
+            #                                          path_source_lengths=path_source_lengths,
+            #                                          path_lengths=path_lengths, path_target_lengths=path_target_lengths,
+            #                                          is_evaluating=True)
             batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab, nodes_vocab=nodes_vocab,
                                                      source_input=path_source_indices, nodes_input=node_indices,
                                                      target_input=path_target_indices,
                                                      valid_mask=valid_mask,
                                                      path_source_lengths=path_source_lengths,
-                                                     path_lengths=path_lengths, path_target_lengths=path_target_lengths,
+                                                     path_target_lengths=path_target_lengths,
                                                      is_evaluating=True)
 
             outputs, final_states = self.decode_outputs(target_words_vocab=target_words_vocab,

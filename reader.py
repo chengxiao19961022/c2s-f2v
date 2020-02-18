@@ -130,16 +130,20 @@ class Reader:
                                             -1)  # (max_contexts)
 
         path_strings = tf.slice(dense_split_contexts, [0, 1], [self.config.MAX_CONTEXTS, 1])
-        flat_path_strings = tf.reshape(path_strings, [-1])
-        split_path = tf.string_split(flat_path_strings, delimiter='|', skip_empty=False)
-        sparse_split_path = tf.sparse.SparseTensor(indices=split_path.indices, values=split_path.values,
-                                                   dense_shape=[self.config.MAX_CONTEXTS, self.config.MAX_PATH_LENGTH])
-        dense_split_path = tf.sparse.to_dense(sp_input=sparse_split_path,
-                                              default_value=Common.PAD)  # (batch, max_contexts, max_path_length)
+        path_indices = tf.strings.regex_replace(path_strings, Common.PAD,
+                                                "0.0")  # (max_contexts, )
+        node_indices = tf.strings.to_number(path_indices, out_type=tf.float32)  # (max_contexts, )
 
-        node_indices = self.node_table.lookup(dense_split_path)  # (max_contexts, max_path_length)
-        path_lengths = tf.reduce_sum(tf.cast(tf.not_equal(dense_split_path, Common.PAD), tf.int32),
-                                     -1)  # (max_contexts)
+        # flat_path_strings = tf.reshape(path_strings, [-1])
+        # split_path = tf.string_split(flat_path_strings, delimiter='|', skip_empty=False)
+        # sparse_split_path = tf.sparse.SparseTensor(indices=split_path.indices, values=split_path.values,
+        #                                            dense_shape=[self.config.MAX_CONTEXTS, self.config.MAX_PATH_LENGTH])
+        # dense_split_path = tf.sparse.to_dense(sp_input=sparse_split_path,
+        #                                       default_value=Common.PAD)  # (batch, max_contexts, max_path_length)
+        #
+        # node_indices = self.node_table.lookup(dense_split_path)  # (max_contexts, max_path_length)
+        # path_lengths = tf.reduce_sum(tf.cast(tf.not_equal(dense_split_path, Common.PAD), tf.int32),
+        #                              -1)  # (max_contexts)
 
         path_target_strings = tf.slice(dense_split_contexts, [0, 2], [self.config.MAX_CONTEXTS, 1])  # (max_contexts, 1)
         flat_target_strings = tf.reshape(path_target_strings, [-1])  # (max_contexts)
@@ -160,11 +164,19 @@ class Reader:
             tf.reduce_max(path_source_indices, -1) + tf.reduce_max(node_indices, -1) + tf.reduce_max(
                 path_target_indices, -1), 0))
 
+        # return {TARGET_STRING_KEY: word, TARGET_INDEX_KEY: target_word_labels,
+        #         TARGET_LENGTH_KEY: clipped_target_lengths,
+        #         PATH_SOURCE_INDICES_KEY: path_source_indices, NODE_INDICES_KEY: node_indices,
+        #         PATH_TARGET_INDICES_KEY: path_target_indices, VALID_CONTEXT_MASK_KEY: valid_contexts_mask,
+        #         PATH_SOURCE_LENGTHS_KEY: path_source_lengths, PATH_LENGTHS_KEY: path_lengths,
+        #         PATH_TARGET_LENGTHS_KEY: path_target_lengths, PATH_SOURCE_STRINGS_KEY: path_source_strings,
+        #         PATH_STRINGS_KEY: path_strings, PATH_TARGET_STRINGS_KEY: path_target_strings
+        #         }
         return {TARGET_STRING_KEY: word, TARGET_INDEX_KEY: target_word_labels,
                 TARGET_LENGTH_KEY: clipped_target_lengths,
                 PATH_SOURCE_INDICES_KEY: path_source_indices, NODE_INDICES_KEY: node_indices,
                 PATH_TARGET_INDICES_KEY: path_target_indices, VALID_CONTEXT_MASK_KEY: valid_contexts_mask,
-                PATH_SOURCE_LENGTHS_KEY: path_source_lengths, PATH_LENGTHS_KEY: path_lengths,
+                PATH_SOURCE_LENGTHS_KEY: path_source_lengths,
                 PATH_TARGET_LENGTHS_KEY: path_target_lengths, PATH_SOURCE_STRINGS_KEY: path_source_strings,
                 PATH_STRINGS_KEY: path_strings, PATH_TARGET_STRINGS_KEY: path_target_strings
                 }
@@ -230,7 +242,7 @@ if __name__ == '__main__':
     path_target_indices_op = output[PATH_TARGET_INDICES_KEY]
     valid_context_mask_op = output[VALID_CONTEXT_MASK_KEY]
     path_source_lengths_op = output[PATH_SOURCE_LENGTHS_KEY]
-    path_lengths_op = output[PATH_LENGTHS_KEY]
+    # path_lengths_op = output[PATH_LENGTHS_KEY]
     path_target_lengths_op = output[PATH_TARGET_LENGTHS_KEY]
     path_source_strings_op = output[PATH_SOURCE_STRINGS_KEY]
     path_strings_op = output[PATH_STRINGS_KEY]
@@ -248,8 +260,14 @@ if __name__ == '__main__':
             path_target_strings = sess.run(
                 [target_index_op, target_string_op, target_length_op, path_source_indices_op,
                  node_indices_op, path_target_indices_op, valid_context_mask_op, path_source_lengths_op,
-                 path_lengths_op, path_target_lengths_op, path_source_strings_op, path_strings_op,
+                 path_target_lengths_op, path_source_strings_op, path_strings_op,
                  path_target_strings_op])
+            # path_target_strings = sess.run(
+            #     [target_index_op, target_string_op, target_length_op, path_source_indices_op,
+            #      node_indices_op, path_target_indices_op, valid_context_mask_op, path_source_lengths_op,
+            #      path_lengths_op, path_target_lengths_op, path_source_strings_op, path_strings_op,
+            #      path_target_strings_op])
+
 
             print('Target strings: ', Common.binary_to_string_list(target_strings))
             print('Context strings: ', Common.binary_to_string_3d(
@@ -261,7 +279,7 @@ if __name__ == '__main__':
             print('Path source lengths: ', path_source_lengths)
             print('Path strings: ', Common.binary_to_string_3d(path_strings))
             print('Node indices: ', node_indices)
-            print('Path lengths: ', path_lengths)
+            # print('Path lengths: ', path_lengths)
             print('Path target strings: ', Common.binary_to_string_3d(path_target_strings))
             print('Path target indices: ', path_target_indices)
             print('Path target lengths: ', path_target_lengths)
