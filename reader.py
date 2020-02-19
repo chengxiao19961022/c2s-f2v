@@ -162,8 +162,8 @@ class Reader:
                                             -1)  # (max_contexts)
 
         valid_contexts_mask = tf.to_float(tf.not_equal(
-            tf.reduce_max(path_source_indices, -1) + tf.reduce_max(node_indices, -1) + tf.reduce_max(
-                path_target_indices, -1), 0))
+            tf.cast(tf.reduce_max(path_source_indices, -1), tf.float32) + tf.reduce_max(node_indices, -1) + tf.cast(tf.reduce_max(
+                path_target_indices, -1), tf.float32), 0))
 
         # return {TARGET_STRING_KEY: word, TARGET_INDEX_KEY: target_word_labels,
         #         TARGET_LENGTH_KEY: clipped_target_lengths,
