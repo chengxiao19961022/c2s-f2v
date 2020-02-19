@@ -33,7 +33,7 @@ class Model:
         else:
             with open('{}.dict.c2s'.format(config.TRAIN_PATH), 'rb') as file:
                 subtoken_to_count = pickle.load(file)
-                node_to_count = pickle.load(file)
+                # node_to_count = pickle.load(file)
                 target_to_count = pickle.load(file)
                 max_contexts = pickle.load(file)
                 self.num_training_examples = pickle.load(file)
