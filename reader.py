@@ -161,10 +161,12 @@ class Reader:
         path_target_lengths = tf.reduce_sum(tf.cast(tf.not_equal(dense_split_target, Common.PAD), tf.int32),
                                             -1)  # (max_contexts)
 
+        # valid_contexts_mask = tf.to_float(tf.not_equal(
+        #     tf.cast(tf.reduce_max(path_source_indices, -1), tf.float32) + tf.reduce_max(node_indices, -1) + tf.cast(tf.reduce_max(
+        #         path_target_indices, -1), tf.float32), 0))
         valid_contexts_mask = tf.to_float(tf.not_equal(
-            tf.cast(tf.reduce_max(path_source_indices, -1), tf.float32) + tf.reduce_max(node_indices, -1) + tf.cast(tf.reduce_max(
-                path_target_indices, -1), tf.float32), 0))
-
+            tf.reduce_max(path_source_indices, -1) + tf.reduce_max(
+                    path_target_indices, -1), 0))
         # return {TARGET_STRING_KEY: word, TARGET_INDEX_KEY: target_word_labels,
         #         TARGET_LENGTH_KEY: clipped_target_lengths,
         #         PATH_SOURCE_INDICES_KEY: path_source_indices, NODE_INDICES_KEY: node_indices,
