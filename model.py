@@ -569,7 +569,7 @@ class Model:
         path_source_indices = input_tensors[reader.PATH_SOURCE_INDICES_KEY]
         node_indices = input_tensors[reader.NODE_INDICES_KEY]
         path_target_indices = input_tensors[reader.PATH_TARGET_INDICES_KEY]
-        # valid_mask = input_tensors[reader.VALID_CONTEXT_MASK_KEY]
+        valid_mask = input_tensors[reader.VALID_CONTEXT_MASK_KEY]
         path_source_lengths = input_tensors[reader.PATH_SOURCE_LENGTHS_KEY]
         # path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
         path_target_lengths = input_tensors[reader.PATH_TARGET_LENGTHS_KEY]
@@ -603,7 +603,6 @@ class Model:
                                                         target_input=target_index, batch_size=tf.shape(target_index)[0],
                                                         batched_contexts=batched_contexts, valid_mask=valid_mask,
                                                         is_evaluating=True)
-
         if self.config.BEAM_WIDTH > 0:
             predicted_indices = outputs.predicted_ids
             topk_values = outputs.beam_search_decoder_output.scores
