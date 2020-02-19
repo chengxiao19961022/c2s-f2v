@@ -51,9 +51,9 @@ class Model:
                                             max_size=config.TARGET_VOCAB_MAX_SIZE)
             print('Loaded target word vocab. size: %d' % self.target_vocab_size)
 
-            self.node_to_index, self.index_to_node, self.nodes_vocab_size = \
-                Common.load_vocab_from_dict(node_to_count, add_values=[Common.PAD, Common.UNK], max_size=None)
-            print('Loaded nodes vocab. size: %d' % self.nodes_vocab_size)
+            # self.node_to_index, self.index_to_node, self.nodes_vocab_size = \
+            #     Common.load_vocab_from_dict(node_to_count, add_values=[Common.PAD, Common.UNK], max_size=None)
+            # print('Loaded nodes vocab. size: %d' % self.nodes_vocab_size)
             self.epochs_trained = 0
 
     def close_session(self):
@@ -71,8 +71,11 @@ class Model:
         best_f1_recall = 0
         epochs_no_improve = 0
 
+        # self.queue_thread = reader.Reader(subtoken_to_index=self.subtoken_to_index,
+        #                                   node_to_index=self.node_to_index,
+        #                                   target_to_index=self.target_to_index,
+        #                                   config=self.config)
         self.queue_thread = reader.Reader(subtoken_to_index=self.subtoken_to_index,
-                                          node_to_index=self.node_to_index,
                                           target_to_index=self.target_to_index,
                                           config=self.config)
         optimizer, train_loss = self.build_training_graph(self.queue_thread.get_output())
@@ -145,8 +148,11 @@ class Model:
     def evaluate(self, release=False):
         eval_start_time = time.time()
         if self.eval_queue is None:
+            # self.eval_queue = reader.Reader(subtoken_to_index=self.subtoken_to_index,
+            #                                 node_to_index=self.node_to_index,
+            #                                 target_to_index=self.target_to_index,
+            #                                 config=self.config, is_evaluating=True)
             self.eval_queue = reader.Reader(subtoken_to_index=self.subtoken_to_index,
-                                            node_to_index=self.node_to_index,
                                             target_to_index=self.target_to_index,
                                             config=self.config, is_evaluating=True)
             reader_output = self.eval_queue.get_output()
@@ -352,11 +358,11 @@ class Model:
                                                  initializer=tf.contrib.layers.variance_scaling_initializer(factor=1.0,
                                                                                                             mode='FAN_OUT',
                                                                                                             uniform=True))
-            nodes_vocab = tf.get_variable('NODES_VOCAB', shape=(self.nodes_vocab_size, self.config.EMBEDDINGS_SIZE),
-                                          dtype=tf.float32,
-                                          initializer=tf.contrib.layers.variance_scaling_initializer(factor=1.0,
-                                                                                                     mode='FAN_OUT',
-                                                                                                     uniform=True))
+            # nodes_vocab = tf.get_variable('NODES_VOCAB', shape=(self.nodes_vocab_size, self.config.EMBEDDINGS_SIZE),
+            #                               dtype=tf.float32,
+            #                               initializer=tf.contrib.layers.variance_scaling_initializer(factor=1.0,
+            #                                                                                          mode='FAN_OUT',
+            #                                                                                          uniform=True))
             # (batch, max_contexts, decoder_size)
             # batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab, nodes_vocab=nodes_vocab,
             #                                          source_input=path_source_indices, nodes_input=node_indices,
@@ -364,10 +370,9 @@ class Model:
             #                                          valid_mask=valid_context_mask,
             #                                          path_source_lengths=path_source_lengths,
             #                                          path_lengths=path_lengths, path_target_lengths=path_target_lengths)
-            batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab, nodes_vocab=nodes_vocab,
+            batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab,
                                                      source_input=path_source_indices, nodes_input=node_indices,
                                                      target_input=path_target_indices,
-                                                     valid_mask=valid_context_mask,
                                                      path_source_lengths=path_source_lengths,
                                                      path_target_lengths=path_target_lengths)
 
@@ -519,14 +524,16 @@ class Model:
     # def compute_contexts(self, subtoken_vocab, nodes_vocab, source_input, nodes_input,
     #                      target_input, valid_mask, path_source_lengths, path_lengths, path_target_lengths,
     #                      is_evaluating=False):
-    def compute_contexts(self, subtoken_vocab, nodes_vocab, source_input, nodes_input,
-                         target_input, valid_mask, path_source_lengths, path_target_lengths,
+    def compute_contexts(self, subtoken_vocab, source_input, nodes_input,
+                         target_input, path_source_lengths, path_target_lengths,
                          is_evaluating=False):
         source_word_embed = tf.nn.embedding_lookup(params=subtoken_vocab,
                                                    ids=source_input)  # (batch, max_contexts, max_name_parts, dim)
         # todo: input float32
-        path_embed = tf.nn.embedding_lookup(params=nodes_vocab,
-                                            ids=nodes_input)  # (batch, max_contexts, max_path_length+1, dim)
+        # path_embed = tf.nn.embedding_lookup(params=nodes_vocab,
+        #                                     ids=nodes_input)  # (batch, max_contexts, max_path_length+1, dim)
+        # path_embed = tf.expand_dims(nodes_input, -1)
+        path_embed = nodes_input # (batch, max_contexts, 1)
         target_word_embed = tf.nn.embedding_lookup(params=subtoken_vocab,
                                                    ids=target_input)  # (batch, max_contexts, max_name_parts, dim)
 
@@ -541,13 +548,14 @@ class Model:
                                          axis=2)  # (batch, max_contexts, dim)
         # path_nodes_aggregation = self.calculate_path_abstraction(path_embed, path_lengths, valid_mask,
         #                                                          is_evaluating)  # (batch, max_contexts, rnn_size)
-        path_nodes_aggregation = self.calculate_path_abstraction(path_embed, valid_mask,
-                                                                 is_evaluating)  # (batch, max_contexts, rnn_size)
+        path_nodes_aggregation = path_embed # (batch, max_contexts, 1)
 
         target_words_sum = tf.reduce_sum(target_word_embed * target_word_mask, axis=2)  # (batch, max_contexts, dim)
 
+        # context_embed = tf.concat([source_words_sum, path_nodes_aggregation, target_words_sum],
+        #                           axis=-1)  # (batch, max_contexts, dim * 2 + rnn_size)
         context_embed = tf.concat([source_words_sum, path_nodes_aggregation, target_words_sum],
-                                  axis=-1)  # (batch, max_contexts, dim * 2 + rnn_size)
+                                  axis=-1)  # (batch, max_contexts, dim * 2 + 1)
         if not is_evaluating:
             context_embed = tf.nn.dropout(context_embed, self.config.EMBEDDINGS_DROPOUT_KEEP_PROB)
 
@@ -561,7 +569,7 @@ class Model:
         path_source_indices = input_tensors[reader.PATH_SOURCE_INDICES_KEY]
         node_indices = input_tensors[reader.NODE_INDICES_KEY]
         path_target_indices = input_tensors[reader.PATH_TARGET_INDICES_KEY]
-        valid_mask = input_tensors[reader.VALID_CONTEXT_MASK_KEY]
+        # valid_mask = input_tensors[reader.VALID_CONTEXT_MASK_KEY]
         path_source_lengths = input_tensors[reader.PATH_SOURCE_LENGTHS_KEY]
         # path_lengths = input_tensors[reader.PATH_LENGTHS_KEY]
         path_target_lengths = input_tensors[reader.PATH_TARGET_LENGTHS_KEY]
@@ -573,9 +581,9 @@ class Model:
             target_words_vocab = tf.get_variable('TARGET_WORDS_VOCAB',
                                                  shape=(self.target_vocab_size, self.config.EMBEDDINGS_SIZE),
                                                  dtype=tf.float32, trainable=False)
-            nodes_vocab = tf.get_variable('NODES_VOCAB',
-                                          shape=(self.nodes_vocab_size, self.config.EMBEDDINGS_SIZE),
-                                          dtype=tf.float32, trainable=False)
+            # nodes_vocab = tf.get_variable('NODES_VOCAB',
+            #                               shape=(self.nodes_vocab_size, self.config.EMBEDDINGS_SIZE),
+            #                               dtype=tf.float32, trainable=False)
 
             # batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab, nodes_vocab=nodes_vocab,
             #                                          source_input=path_source_indices, nodes_input=node_indices,
@@ -584,10 +592,9 @@ class Model:
             #                                          path_source_lengths=path_source_lengths,
             #                                          path_lengths=path_lengths, path_target_lengths=path_target_lengths,
             #                                          is_evaluating=True)
-            batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab, nodes_vocab=nodes_vocab,
+            batched_contexts = self.compute_contexts(subtoken_vocab=subtoken_vocab,
                                                      source_input=path_source_indices, nodes_input=node_indices,
                                                      target_input=path_target_indices,
-                                                     valid_mask=valid_mask,
                                                      path_source_lengths=path_source_lengths,
                                                      path_target_lengths=path_target_lengths,
                                                      is_evaluating=True)
@@ -610,8 +617,11 @@ class Model:
 
     def predict(self, predict_data_lines):
         if self.predict_queue is None:
+            # self.predict_queue = reader.Reader(subtoken_to_index=self.subtoken_to_index,
+            #                                    node_to_index=self.node_to_index,
+            #                                    target_to_index=self.target_to_index,
+            #                                    config=self.config, is_evaluating=True)
             self.predict_queue = reader.Reader(subtoken_to_index=self.subtoken_to_index,
-                                               node_to_index=self.node_to_index,
                                                target_to_index=self.target_to_index,
                                                config=self.config, is_evaluating=True)
             self.predict_placeholder = tf.placeholder(tf.string)
@@ -690,9 +700,9 @@ class Model:
             pickle.dump(self.index_to_target, file)
             pickle.dump(self.target_vocab_size, file)
 
-            pickle.dump(self.node_to_index, file)
-            pickle.dump(self.index_to_node, file)
-            pickle.dump(self.nodes_vocab_size, file)
+            # pickle.dump(self.node_to_index, file)
+            # pickle.dump(self.index_to_node, file)
+            # pickle.dump(self.nodes_vocab_size, file)
 
             pickle.dump(self.num_training_examples, file)
             pickle.dump(self.epochs_trained, file)
@@ -715,9 +725,9 @@ class Model:
             self.index_to_target = pickle.load(file)
             self.target_vocab_size = pickle.load(file)
 
-            self.node_to_index = pickle.load(file)
-            self.index_to_node = pickle.load(file)
-            self.nodes_vocab_size = pickle.load(file)
+            # self.node_to_index = pickle.load(file)
+            # self.index_to_node = pickle.load(file)
+            # self.nodes_vocab_size = pickle.load(file)
 
             self.num_training_examples = pickle.load(file)
             self.epochs_trained = pickle.load(file)

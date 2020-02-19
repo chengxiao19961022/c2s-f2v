@@ -22,9 +22,10 @@ PATH_TARGET_STRINGS_KEY = 'PATH_TARGET_STRINGS_KEY'
 class Reader:
     class_subtoken_table = None
     class_target_table = None
-    class_node_table = None
+    # class_node_table = None
 
-    def __init__(self, subtoken_to_index, target_to_index, node_to_index, config, is_evaluating=False):
+    # def __init__(self, subtoken_to_index, target_to_index, node_to_index, config, is_evaluating=False):
+    def __init__(self, subtoken_to_index, target_to_index, config, is_evaluating=False):
         self.config = config
         self.file_path = config.TEST_PATH if is_evaluating else (config.TRAIN_PATH + '.train.c2s')
         if self.file_path is not None and not os.path.exists(self.file_path):
@@ -38,7 +39,7 @@ class Reader:
 
         self.subtoken_table = Reader.get_subtoken_table(subtoken_to_index)
         self.target_table = Reader.get_target_table(target_to_index)
-        self.node_table = Reader.get_node_table(node_to_index)
+        # self.node_table = Reader.get_node_table(node_to_index)
         if self.file_path is not None:
             self.output_tensors = self.compute_output()
 
@@ -54,11 +55,11 @@ class Reader:
             cls.class_target_table = cls.initialize_hash_map(target_to_index, target_to_index[Common.UNK])
         return cls.class_target_table
 
-    @classmethod
-    def get_node_table(cls, node_to_index):
-        if cls.class_node_table is None:
-            cls.class_node_table = cls.initialize_hash_map(node_to_index, node_to_index[Common.UNK])
-        return cls.class_node_table
+    # @classmethod
+    # def get_node_table(cls, node_to_index):
+    #     if cls.class_node_table is None:
+    #         cls.class_node_table = cls.initialize_hash_map(node_to_index, node_to_index[Common.UNK])
+    #     return cls.class_node_table
 
     @classmethod
     def initialize_hash_map(cls, word_to_index, default_value):
@@ -129,10 +130,10 @@ class Reader:
         path_source_lengths = tf.reduce_sum(tf.cast(tf.not_equal(dense_split_source, Common.PAD), tf.int32),
                                             -1)  # (max_contexts)
 
-        path_strings = tf.slice(dense_split_contexts, [0, 1], [self.config.MAX_CONTEXTS, 1])
+        path_strings = tf.slice(dense_split_contexts, [0, 1], [self.config.MAX_CONTEXTS, 1])# (max_contexts, 1)
         path_indices = tf.strings.regex_replace(path_strings, Common.PAD,
-                                                "0.0")  # (max_contexts, )
-        node_indices = tf.strings.to_number(path_indices, out_type=tf.float32)  # (max_contexts, )
+                                                "0.0")  # (max_contexts, 1)
+        node_indices = tf.strings.to_number(path_indices, out_type=tf.float32)  # (max_contexts, 1)
 
         # flat_path_strings = tf.reshape(path_strings, [-1])
         # split_path = tf.string_split(flat_path_strings, delimiter='|', skip_empty=False)
@@ -208,7 +209,7 @@ if __name__ == '__main__':
     target_word_to_index = {Common.PAD: 0, Common.UNK: 1, Common.SOS: 2,
                             'a': 3, 'b': 4, 'c': 5, 'd': 6, 't': 7}
     subtoken_to_index = {Common.PAD: 0, Common.UNK: 1, 'a': 2, 'b': 3, 'c': 4, 'd': 5}
-    node_to_index = {Common.PAD: 0, Common.UNK: 1, '1': 2, '2': 3, '3': 4, '4': 5}
+    # node_to_index = {Common.PAD: 0, Common.UNK: 1, '1': 2, '2': 3, '3': 4, '4': 5}
     import numpy as np
 
 
@@ -231,7 +232,8 @@ if __name__ == '__main__':
 
 
     config = Config()
-    reader = Reader(subtoken_to_index, target_word_to_index, node_to_index, config, False)
+    # reader = Reader(subtoken_to_index, target_word_to_index, node_to_index, config, False)
+    reader = Reader(subtoken_to_index, target_word_to_index, config, False)
 
     output = reader.get_output()
     target_index_op = output[TARGET_INDEX_KEY]
