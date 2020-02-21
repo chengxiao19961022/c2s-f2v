@@ -135,11 +135,6 @@ class Reader:
                                                 "0.0")  # (max_contexts, 1)
         node_indices = tf.strings.to_number(path_indices, out_type=tf.float32)  # (max_contexts, 1)
 
-        sess = tf.Session()
-        print("node_indices")
-        print(sess.run(node_indices))
-        print("path_source_indices")
-        print(sess.run(path_source_indices))
         # flat_path_strings = tf.reshape(path_strings, [-1])
         # split_path = tf.string_split(flat_path_strings, delimiter='|', skip_empty=False)
         # sparse_split_path = tf.sparse.SparseTensor(indices=split_path.indices, values=split_path.values,
@@ -209,6 +204,7 @@ class Reader:
         dataset = dataset.prefetch(tf.contrib.data.AUTOTUNE)
         self.iterator = dataset.make_initializable_iterator()
         self.reset_op = self.iterator.initializer
+        print(list(dataset))
         return self.iterator.get_next()
 
 
