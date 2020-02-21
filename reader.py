@@ -134,8 +134,8 @@ class Reader:
         path_indices = tf.strings.regex_replace(path_strings, Common.PAD,
                                                 "0.0")  # (max_contexts, 1)
         node_indices = tf.strings.to_number(path_indices, out_type=tf.float32)  # (max_contexts, 1)
-        print("node_indices",node_indices)
-        print("path_source_indices",path_source_indices)
+        # print("node_indices",node_indices)
+        # print("path_source_indices",path_source_indices)
         # flat_path_strings = tf.reshape(path_strings, [-1])
         # split_path = tf.string_split(flat_path_strings, delimiter='|', skip_empty=False)
         # sparse_split_path = tf.sparse.SparseTensor(indices=split_path.indices, values=split_path.values,
