@@ -231,9 +231,11 @@ class Model:
 
         elapsed = int(time.time() - eval_start_time)
         precision, recall, f1 = self.calculate_results(true_positive, false_positive, false_negative)
-        files_rouge = FilesRouge(predicted_file_name, ref_file_name)
-        rouge = files_rouge.get_scores(avg=True, ignore_empty=True)
-        # rouge = None
+        try:
+            files_rouge = FilesRouge(predicted_file_name, ref_file_name)
+            rouge = files_rouge.get_scores(avg=True, ignore_empty=True)
+        except:
+            rouge = None
         print("Evaluation time: %sh%sm%ss" % ((elapsed // 60 // 60), (elapsed // 60) % 60, elapsed % 60))
         return num_correct_predictions / total_predictions, \
                precision, recall, f1, rouge
