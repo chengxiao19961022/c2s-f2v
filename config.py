@@ -26,6 +26,10 @@ class Config:
         config.RANDOM_CONTEXTS = True
         config.BEAM_WIDTH = 0
         config.USE_MOMENTUM = True
+        # config.IS_SENSITIVE = False
+        # config.RM_ALIAS = False
+        # config.RM_AT = False
+        # config.RM_IT = False
         return config
 
     def take_model_hyperparams_from(self, otherConfig):
@@ -46,8 +50,10 @@ class Config:
         self.READER_NUM_PARALLEL_BATCHES = 0
         self.SHUFFLE_BUFFER_SIZE = 0
         self.CSV_BUFFER_SIZE = None
-        self.TRAIN_PATH = args.data_path
-        self.TEST_PATH = args.test_path if args.test_path is not None else ''
+        # self.TRAIN_PATH = args.data_path
+        # self.TEST_PATH = args.test_path if args.test_path is not None else ''
+        self.TRAIN_PATH = 0
+        self.TEST_PATH = 0
         self.DATA_NUM_CONTEXTS = 0
         self.MAX_CONTEXTS = 0
         self.SUBTOKENS_VOCAB_MAX_SIZE = 0
@@ -56,8 +62,10 @@ class Config:
         self.RNN_SIZE = 0
         self.DECODER_SIZE = 0
         self.NUM_DECODER_LAYERS = 0
-        self.SAVE_PATH = args.save_path_prefix
-        self.LOAD_PATH = args.load_path
+        # self.SAVE_PATH = args.save_path_prefix
+        # self.LOAD_PATH = args.load_path
+        self.SAVE_PATH = 0
+        self.LOAD_PATH = 0
         self.MAX_PATH_LENGTH = 0
         self.MAX_NAME_PARTS = 0
         self.MAX_TARGET_PARTS = 0
@@ -67,7 +75,11 @@ class Config:
         self.RANDOM_CONTEXTS = True
         self.BEAM_WIDTH = 1
         self.USE_MOMENTUM = True
-        self.RELEASE = args.release
+        # self.RELEASE = args.release
+        # self.IS_SENSITIVE = args.is_sensitive
+        # self.RM_ALIAS = args.rm_alias
+        # self.RM_AT = args.rm_at
+        # self.RM_IT = args.rm_at
 
     @staticmethod
     def get_debug_config(args):
@@ -96,4 +108,8 @@ class Config:
         config.RANDOM_CONTEXTS = True
         config.BEAM_WIDTH = 0
         config.USE_MOMENTUM = False
+        # config.IS_SENSITIVE = False
+        # config.RM_ALIAS = False
+        # config.RM_AT = False
+        # config.RM_IT = False
         return config

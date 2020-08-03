@@ -4,4 +4,12 @@
 *.iml
 *.xml
 *.pyc
+**/data/**
+build/**
+.vscode/**
+models/**
+dist/**
+resources/seq-models/**
+static/**
+
 

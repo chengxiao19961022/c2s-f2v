@@ -10,7 +10,9 @@ import reader
 from common import Common
 from rouge import FilesRouge
 
-
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+tf.logging.set_verbosity(tf.logging.ERROR)
+# tf.compat.logging.set_verbosity(tf.compat.logging.ERROR)
 class Model:
     topk = 10
     num_batches_to_log = 100
@@ -107,36 +109,38 @@ class Model:
 
             except tf.errors.OutOfRangeError:
                 self.epochs_trained += self.config.SAVE_EVERY_EPOCHS
-                print('Finished %d epochs' % self.config.SAVE_EVERY_EPOCHS)
+                print('Finished epoch %d' % self.epochs_trained)
                 results, precision, recall, f1, rouge = self.evaluate()
-                if self.config.BEAM_WIDTH == 0:
-                    print('Accuracy after %d epochs: %.5f' % (self.epochs_trained, results))
-                else:
-                    print('Accuracy after {} epochs: {}'.format(self.epochs_trained, results))
-                print('After %d epochs: Precision: %.5f, recall: %.5f, F1: %.5f' % (
-                    self.epochs_trained, precision, recall, f1))
-                print('Rouge: ', rouge)
-                if f1 > best_f1:
-                    best_f1 = f1
-                    best_f1_precision = precision
-                    best_f1_recall = recall
-                    best_epoch = self.epochs_trained
-                    epochs_no_improve = 0
-                    self.save_model(self.sess, self.config.SAVE_PATH)
-                else:
-                    epochs_no_improve += self.config.SAVE_EVERY_EPOCHS
-                    if epochs_no_improve >= self.config.PATIENCE:
-                        print('Not improved for %d epochs, stopping training' % self.config.PATIENCE)
-                        print('Best scores - epoch %d: ' % best_epoch)
-                        print('Precision: %.5f, recall: %.5f, F1: %.5f' % (best_f1_precision, best_f1_recall, best_f1))
-                        return
+                # if self.config.BEAM_WIDTH == 0:
+                #     print('Accuracy after %d epochs: %.5f' % (self.epochs_trained, results))
+                # else:
+                #     print('Accuracy after {} epochs: {}'.format(self.epochs_trained, results))
+                # print('After %d epochs: Precision: %.5f, recall: %.5f, F1: %.5f' % (
+                #     self.epochs_trained, precision, recall, f1))
+                # print('Rouge: ', rouge)
+                if self.epochs_trained == 50:
+                    return
+                # if f1 > best_f1:
+                #     best_f1 = f1
+                #     best_f1_precision = precision
+                #     best_f1_recall = recall
+                #     best_epoch = self.epochs_trained
+                #     epochs_no_improve = 0
+                #     self.save_model(self.sess, self.config.SAVE_PATH)
+                # else:
+                #     epochs_no_improve += self.config.SAVE_EVERY_EPOCHS
+                #     if epochs_no_improve >= self.config.PATIENCE:
+                #         print('Not improved for %d epochs, stopping training' % self.config.PATIENCE)
+                #         # print('Best scores - epoch %d: ' % best_epoch)
+                #         # print('Precision: %.5f, recall: %.5f, F1: %.5f' % (best_f1_precision, best_f1_recall, best_f1))
+                #         return
 
         if self.config.SAVE_PATH:
             self.save_model(self.sess, self.config.SAVE_PATH + '.final')
             print('Model saved in file: %s' % self.config.SAVE_PATH)
 
-        elapsed = int(time.time() - start_time)
-        print("Training time: %sh%sm%ss\n" % ((elapsed // 60 // 60), (elapsed // 60) % 60, elapsed % 60))
+        # elapsed = int(time.time() - start_time)
+        # print("Training time: %sh%sm%ss\n" % ((elapsed // 60 // 60), (elapsed // 60) % 60, elapsed % 60))
 
     def trace(self, sum_loss, batch_num, multi_batch_start_time):
         multi_batch_elapsed = time.time() - multi_batch_start_time
@@ -508,7 +512,7 @@ class Model:
                 inputs=flat_paths,
                 dtype=tf.float32,
                 sequence_length=lengths)
-            final_rnn_state = tf.concat([state_fw.h, state_bw.h], axis=-1)  # (batch * max_contexts, rnn_size)  
+            final_rnn_state = tf.concat([state_fw.h, state_bw.h], axis=-1)  # (batch * max_contexts, rnn_size)
         else:
             rnn_cell = tf.nn.rnn_cell.LSTMCell(self.config.RNN_SIZE)
             if not is_evaluating:
@@ -657,12 +661,12 @@ class Model:
 
             if self.config.BEAM_WIDTH > 0:
                 predicted_strings = [[self.index_to_target[sugg] for sugg in timestep]
-                                     for timestep in predicted_indices]  # (target_length, top-k)  
+                                     for timestep in predicted_indices]  # (target_length, top-k)
                 predicted_strings = list(map(list, zip(*predicted_strings)))  # (top-k, target_length)
                 top_scores = [np.exp(np.sum(s)) for s in zip(*top_scores)]
             else:
                 predicted_strings = [self.index_to_target[idx]
-                                     for idx in predicted_indices]  # (batch, target_length)  
+                                     for idx in predicted_indices]  # (batch, target_length)
 
             attention_per_path = None
             if self.config.BEAM_WIDTH == 0:
